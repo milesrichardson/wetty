@@ -36,6 +36,10 @@ var opts = require('optimist')
             demand: false,
             description: 'default to "no", set to "yes" to force ssh even when running uid != 0'
         },
+        unknownhostok: {
+            demand: false,
+            description: 'default to "yes", for SSH, unknown hosts are ok. sets StrictHostKeychecking=no and UserKnownHostsFile=/dev/null'
+        },
         port: {
             demand: true,
             alias: 'p',
@@ -49,6 +53,7 @@ var sshhost = 'localhost';
 var sshauth = 'password';
 var globalsshuser = '';
 var forcessh = false;
+var unknownhostok = true;
 
 if (opts.sshport) {
     sshport = opts.sshport;
@@ -68,6 +73,10 @@ if (opts.sshuser) {
 
 if (opts.forcessh && opts.forcessh == "yes") {
     forcessh = true;
+}
+
+if (opts.unknownhostok && opts.unknownhostok == "no") {
+    unknownhostok = false;
 }
 
 if (opts.sslkey && opts.sslcert) {
@@ -118,7 +127,17 @@ io.on('connection', function(socket){
             rows: 30
         });
     } else {
-        term = pty.spawn('ssh', [sshuser + sshhost, '-p', sshport, '-o', 'PreferredAuthentications=' + sshauth], {
+
+        var sshArgs = [sshuser + sshhost,
+            '-p', sshport,
+            '-o', 'PreferredAuthentications=' + sshauth]
+
+        if (unknownhostok) {
+            sshArgs = sshArgs.concat(['-o', 'StrictHostKeyChecking=no',
+                                      '-o', 'UserKnownHostsFile=/dev/null'])
+        }
+
+        term = pty.spawn('ssh', sshArgs, {
             name: 'xterm-256color',
             cols: 80,
             rows: 30
