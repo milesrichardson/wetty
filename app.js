@@ -32,6 +32,10 @@ var opts = require('optimist')
             demand: false,
             description: 'defaults to "password", you can use "publickey,password" instead'
         },
+        forcessh: {
+            demand: false,
+            description: 'default to "no", set to "yes" to force ssh even when running uid != 0'
+        },
         port: {
             demand: true,
             alias: 'p',
@@ -44,6 +48,7 @@ var sshport = 22;
 var sshhost = 'localhost';
 var sshauth = 'password';
 var globalsshuser = '';
+var forcessh = false;
 
 if (opts.sshport) {
     sshport = opts.sshport;
@@ -59,6 +64,10 @@ if (opts.sshauth) {
 
 if (opts.sshuser) {
     globalsshuser = opts.sshuser;
+}
+
+if (opts.forcessh && opts.forcessh == "yes") {
+    forcessh = true;
 }
 
 if (opts.sslkey && opts.sslcert) {
@@ -82,11 +91,11 @@ app.use('/', express.static(path.join(__dirname, 'public')));
 
 if (runhttps) {
     httpserv = https.createServer(opts.ssl, app).listen(opts.port, function() {
-        console.log('https on port ' + opts.port);
+        console.log('https on port ' + opts.port + '. forcessh = ' + forcessh.toString());
     });
 } else {
     httpserv = http.createServer(app).listen(opts.port, function() {
-        console.log('http on port ' + opts.port);
+        console.log('http on port ' + opts.port + '. forcessh = ' + forcessh.toString());
     });
 }
 
@@ -102,7 +111,7 @@ io.on('connection', function(socket){
     }
 
     var term;
-    if (process.getuid() == 0) {
+    if (process.getuid() == 0 && !forcessh) {
         term = pty.spawn('/bin/login', [], {
             name: 'xterm-256color',
             cols: 80,
